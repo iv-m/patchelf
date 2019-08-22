@@ -946,9 +946,9 @@ void ElfFile<ElfFileParamNames>::rewriteHeaders(Elf_Addr phdrAddress)
        (e.g., those produced by klibc's klcc). */
     Elf_Shdr * shdrDynamic = findSection2(".dynamic");
     if (shdrDynamic) {
-        Elf_Dyn * dyn = (Elf_Dyn *) (contents + rdi(shdrDynamic->sh_offset));
+        Elf_Dyn * dyn_table = (Elf_Dyn *) (contents + rdi(shdrDynamic->sh_offset));
         unsigned int d_tag;
-        for ( ; (d_tag = rdi(dyn->d_tag)) != DT_NULL; dyn++)
+        for (Elf_Dyn * dyn = dyn_table; (d_tag = rdi(dyn->d_tag)) != DT_NULL; dyn++)
             if (d_tag == DT_STRTAB)
                 dyn->d_un.d_ptr = findSection(".dynstr").sh_addr;
             else if (d_tag == DT_STRSZ)
@@ -987,6 +987,14 @@ void ElfFile<ElfFileParamNames>::rewriteHeaders(Elf_Addr phdrAddress)
                 dyn->d_un.d_ptr = findSection(".gnu.version_r").sh_addr;
             else if (d_tag == DT_VERSYM)
                 dyn->d_un.d_ptr = findSection(".gnu.version").sh_addr;
+            else if (d_tag == DT_MIPS_RLD_MAP_REL) {
+                /* the MIPS_RLD_MAP_REL tag stores the offset to the debug
+                   pointer, relative to the address of the tag */
+                debug("Updating DT_MIPS_RLD_MAP_REL");
+                Elf_Addr rtld_map_addr = findSection(".rld_map").sh_addr;
+                auto dyn_offset = ((char*)dyn) - ((char*)dyn_table);
+                dyn->d_un.d_ptr = rtld_map_addr + dyn_offset - shdrDynamic->sh_addr;
+            }
     }
 
 
