@@ -683,6 +683,17 @@ void ElfFile<ElfFileParamNames>::writeReplacedSections(Elf_Off & curOff,
                 }
         }
 
+	/* If there is .MIPS.abiflags section, then the PT_MIPS_ABIFLAGS
+           segment must be sync'ed with it. */
+        if (sectionName == ".MIPS.abiflags") {
+            for (unsigned int j = 0; j < phdrs.size(); ++j)
+                if (rdi(phdrs[j].p_type) == PT_MIPS_ABIFLAGS) {
+                    phdrs[j].p_offset = shdr.sh_offset;
+                    phdrs[j].p_vaddr = phdrs[j].p_paddr = shdr.sh_addr;
+                    phdrs[j].p_filesz = phdrs[j].p_memsz = shdr.sh_size;
+                }
+        }
+
         curOff += roundUp(i.second.size(), sectionAlignment);
     }
 
